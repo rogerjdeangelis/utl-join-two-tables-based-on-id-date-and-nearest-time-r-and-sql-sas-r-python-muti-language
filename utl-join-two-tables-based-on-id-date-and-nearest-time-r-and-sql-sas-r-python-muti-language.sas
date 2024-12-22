@@ -1,13 +1,12 @@
 %let pgm=utl-join-two-tables-based-on-id-date-and-nearest-time-r-and-sql-sas-r-python-muti-language;
 
+%stop_submission;
+
 Join two tables based on id date and nearest time r and sql sas r python muti language
 
 github
 https://tinyurl.com/2m7m6wuh
 https://github.com/rogerjdeangelis/utl-join-two-tables-based-on-id-date-and-nearest-time-r-and-sql-sas-r-python-muti-language
-
-%stop_submission;
-
 related.to
 https://tinyurl.com/2ht4uu4y
 https://stackoverflow.com/questions/79287593/how-to-join-two-datasets-based-on-the-id-date-and-approximate
@@ -20,6 +19,20 @@ I do not use the statement that the second time is 10 minutes greater than the f
     1 sas sql
     2 r sql
     3 python sql
+    4 sas datastep
+      general method for mearest, forward and backward reording
+      by Mark Keintz,
+         mkeintz@outlook.com
+
+Related ( conditional sets and program datavetor partitioning)
+by Mark Keintz
+
+github
+https://tinyurl.com/4k63c69y
+https://github.com/rogerjdeangelis/utl-flag-observations-with-same-id-date-but-different-result-sas-sql-r-python-multi-language
+
+https://tinyurl.com/ysr5ukux
+https://github.com/rogerjdeangelis/utl-using-sentinels-to-restrict-update-to-common-columns-in-master-table-and-transaction-table
 
 /*               _     _
  _ __  _ __ ___ | |__ | | ___ _ __ ___
@@ -85,6 +98,45 @@ I do not use the statement that the second time is 10 minutes greater than the f
 /*                                |    min(abs(df1.datetime-df2.datetime)) |                                                             */
 /*                                |       = abs(df1.datetime-df2.datetime) |                                                             */
 /*                                |                                        |                                                             */
+/*                                |-----------------------------------------------------                                                 */
+/*                                |                                                    |                                                 */
+/*                                | 3 Datastep Solution                                |                                                 */
+/*                                |   by Mark Keintz,                                  |                                                 */
+/*                                |      mkeintz@outlook.com                           |                                                 */
+/*                                |                                                    |                                                 */
+/*                                | If the tables are sorted by ID/DATETIME,           |                                                 */
+/*                                | then there is a much simpler way to do this using  |                                                 */
+/*                                | DATA steps containing conditional SET statements.  |                                                 */
+/*                                | And the conditional SET approach is trivially      |                                                 */
+/*                                | expanded to joining three or more                  |                                                 */
+/*                                | tables using the "nearest time" criterion.         |                                                 */
+/*                                | It can be generalized to carrying DF1 data         |                                                 */
+/*                                | forward, backward, or as here,                     |                                                 */
+/*                                | closest to the DF2 observations.                   |                                                 */
+/*                                |                                                    |                                                 */
+/*                                | %let first_dt= 01jan2010 00:00:00;                 |                                                 */
+/*                                |   /*"Starting date" for each ID in DF1*/           |                                                 */
+/*                                |                                                    |                                                 */
+/*                                | data df1_midpoints /view=df1_midpoints;            |                                                 */
+/*                                |   set sd1.df1 (rename=(datetime=df1_datetime)) ;   |                                                 */
+/*                                |   by id df1_datetime;                              |                                                 */
+/*                                |   _dt=mean(lag(df1_datetime),df1_datetime);        |                                                 */
+/*                                |   if first.id then _dt="&first_dt"dt;              |                                                 */
+/*                                |   format _dt e8601dt19.0;                          |                                                 */
+/*                                | run;                                               |                                                 */
+/*                                |                                                    |                                                 */
+/*                                | data want (drop=_:);                               |                                                 */
+/*                                |   set df1_midpoints (keep=id _dt  in=in1)          |                                                 */
+/*                                |       sd1.df2 (keep=id datetime                    |                                                 */
+/*                                |         rename=(datetime=_dt) in=in2);             |                                                 */
+/*                                |   by id _dt;                                       |                                                 */
+/*                                |                                                    |                                                 */
+/*                                |   if in1 then set df1_midpoints;                   |                                                 */
+/*                                |   if in2;                                          |                                                 */
+/*                                |   set sd1.df2 (rename=(datetime=df2_datetime));    |                                                 */
+/*                                |   mindif = range(df1_datetime,df2_datetime)/60;    |                                                 */
+/*                                | run;                                               |                                                 */
+/*                                |                                                    |                                                 */
 /*****************************************************************************************************************************************/
 
 /*                   _
@@ -279,6 +331,61 @@ run;quit;
 /*    1      2020-12-02T18:02:01    2020-12-02T18:08:01    6.00000    1.3                                                 */
 /*    2      2020-12-02T18:12:08    2020-12-02T18:21:11    9.05000    4.2                                                 */
 /*    3      2020-12-03T10:03:03    2020-12-03T10:09:22    6.31667    7.1                                                 */
+/*                                                                                                                        */
+/**************************************************************************************************************************/
+/*____       _       _            _                        _       _   _
+|___ /    __| | __ _| |_ __ _ ___| |_ ___ _ __   ___  ___ | |_   _| |_(_) ___  _ __
+  |_ \   / _` |/ _` | __/ _` / __| __/ _ \ `_ \ / __|/ _ \| | | | | __| |/ _ \| `_ \
+ ___) | | (_| | (_| | || (_| \__ \ ||  __/ |_) |\__ \ (_) | | |_| | |_| | (_) | | | |
+|____/   \__,_|\__,_|\__\__,_|___/\__\___| .__/ |___/\___/|_|\__,_|\__|_|\___/|_| |_|
+                                         |_|
+
+3 Datastep Solution
+  by Mark Keintz,
+     mkeintz@outlook.com
+
+If the tables are sorted by ID/DATETIME,
+then there is a much simpler way to do this using
+DATA steps containing conditional SET statements.
+And the conditional SET approach is trivially
+expanded to joining three or more
+tables using the "nearest time" criterion.
+It can be generalized to carrying DF1 data
+forward, backward, or as here,
+closest to the DF2 observations.
+*/
+
+%let first_dt= 01jan2010 00:00:00;
+  /*"Starting date" for each ID in DF1*/
+
+data df1_midpoints /view=df1_midpoints;
+  set sd1.df1 (rename=(datetime=df1_datetime)) ;
+  by id df1_datetime;
+  _dt=mean(lag(df1_datetime),df1_datetime);
+  if first.id then _dt="&first_dt"dt;
+  format _dt e8601dt19.0;
+run;
+
+data want (drop=_:);
+  set df1_midpoints (keep=id _dt  in=in1)
+      sd1.df2 (keep=id datetime
+        rename=(datetime=_dt) in=in2);
+  by id _dt;
+
+  if in1 then set df1_midpoints;
+  if in2;
+  set sd1.df2 (rename=(datetime=df2_datetime));
+  mindif = range(df1_datetime,df2_datetime)/60;
+run;
+
+/**************************************************************************************************************************/
+/*                                                                                                                        */
+/*                         DF1_                 DF2_                                                                      */
+/* Obs    ID      W      DATETIME      X1     DATETIME      MINDIF                                                        */
+/*                                                                                                                        */
+/*  1      1    0.25    1922551321    1.3    1922551681    6.00000                                                        */
+/*  2      2    0.44    1922551928    4.2    1922552471    9.05000                                                        */
+/*  3      3    0.98    1922608983    7.1    1922609362    6.31667                                                        */
 /*                                                                                                                        */
 /**************************************************************************************************************************/
 
